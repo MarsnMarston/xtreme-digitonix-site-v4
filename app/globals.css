@@ -1,0 +1,11 @@
+
+@tailwind base; @tailwind components; @tailwind utilities;
+:root { --bg:#fff; --fg:#0b0b0b; --accent:#C9B037; --accent-weak:#e9dca3; }
+html,body{height:100%;background:var(--bg);color:var(--fg)}
+.container{@apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;}
+.btn{@apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors border shadow-sm bg-brandblack text-white border-zinc-900 hover:bg-black;}
+.btn-gold{@apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors border shadow-sm bg-softgold text-brandblack border-softgold hover:bg-[color:var(--accent-weak)];}
+.btn-outline{@apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors border shadow-sm bg-white text-brandblack border-softgold hover:bg-[color:var(--accent-weak)];}
+.input{@apply block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-softgold;}
+.textarea{@apply block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-softgold;}
+.card{@apply rounded-2xl border border-zinc-200 bg-white shadow-sm;}
