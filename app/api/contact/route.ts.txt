@@ -1,78 +1,79 @@
-// app/api/contact/route.ts
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
-export const runtime = "nodejs"; // ⬅️ important for nodemailer
-export const dynamic = "force-dynamic";
-
-function j(data: any) {
-  try { return JSON.stringify(data); } catch { return String(data); }
-}
+export const dynamic = "force-dynamic"; // ensure this is always executed on server
 
 export async function POST(req: Request) {
-  let payload: any = {};
   try {
-    payload = await req.json();
-    console.log("[CONTACT] payload", j(payload));
+    const { name, email, service, message } = await req.json();
 
-    const { name, email, service, message } = payload || {};
+    // 1) Basic validation so we don't send empty emails
     if (!name || !email || !message) {
-      console.error("[CONTACT] missing fields", j({ name, email, message }));
       return NextResponse.json(
-        { ok: false, error: "Required fields missing" },
-        { status: 400 }
+        { success: false, error: "Missing required fields." },
+        { status: 400 },
       );
     }
 
-    // ENV values
-    const SMTP_HOST = process.env.SMTP_HOST || "smtp.hostinger.com";
-    const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-    const SMTP_USER = process.env.SMTP_USER;
-    const SMTP_PASS = process.env.SMTP_PASS;
-    const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER;
-    const TO_EMAIL = process.env.TO_EMAIL || SMTP_USER;
+    // 2) Read env vars (fall back to Hostinger defaults where it’s harmless)
+    const host = process.env.SMTP_HOST || "smtp.hostinger.com";
+    const port = Number(process.env.SMTP_PORT || 465);
+    const user = process.env.SMTP_USER;           // support@xtremedigitonix.com
+    const pass = process.env.SMTP_PASS;           // the *mailbox* password
+    const to   = process.env.TO_EMAIL || user;    // start by sending to your Hostinger mailbox
 
-    console.log("[ENV] host", SMTP_HOST, "port", SMTP_PORT, "user", SMTP_USER, "to", TO_EMAIL);
-
-    if (!SMTP_USER || !SMTP_PASS) {
-      console.error("[ENV] Missing SMTP_USER / SMTP_PASS");
+    if (!user || !pass) {
+      console.error("[MAILER] Missing SMTP_USER / SMTP_PASS in env");
       return NextResponse.json(
-        { ok: false, error: "Email service not configured" },
-        { status: 500 }
+        { success: false, error: "SMTP credentials missing." },
+        { status: 500 },
       );
     }
 
-    // Transporter (465 = SSL)
+    // 3) Create transporter with full debug logging
     const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465, // SSL on 465, STARTTLS on 587
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      host,
+      port,
+      secure: port === 465,        // true for 465, false for 587
+      auth: { user, pass },
+      logger: true,                // print SMTP conversation to Vercel logs
+      debug: true,
     });
 
-    console.log("[MAILER] calling verify()");
+    // 4) Verify server is reachable and creds are correct
     await transporter.verify();
-    console.log("[MAILER] verify() OK");
+    console.log("[MAILER] SMTP verify OK");
 
+    // 5) Build and send message
     const info = await transporter.sendMail({
-      from: `Xtreme Digitonix <${FROM_EMAIL}>`,
-      to: TO_EMAIL,
-      replyTo: email, // reply goes to the person who filled the form
-      subject: `New Contact: ${service || "General"}`,
-      text: `Name: ${name}\nEmail: ${email}\nService: ${service}\nMessage:\n${message}`,
+      from: `"${name}" <${user}>`,  // FROM must be your domain mailbox
+      replyTo: email,               // user email goes here so you can reply
+      to,
+      subject: `New Contact - ${service || "General"}`,
+      text: `Name: ${name}\nEmail: ${email}\nService: ${service}\n\n${message}`,
       html: `
-        <h2>New Contact</h2>
-        <p><b>Name:</b> ${name}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Service:</b> ${service}</p>
-        <p><b>Message:</b><br>${(message || "").replace(/\n/g, "<br>")}</p>
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Service:</strong> ${service || "-"}</p>
+        <p><strong>Message:</strong></p>
+        <p>${(message || "").replace(/\n/g, "<br/>")}</p>
       `,
     });
 
-    console.log("[MAILER] sendMail() OK", j({ messageId: info.messageId }));
-    return NextResponse.json({ ok: true });
+    console.log("[MAILER] accepted:", info.accepted, "rejected:", info.rejected, "messageId:", info.messageId);
+
+    return NextResponse.json({
+      success: true,
+      id: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+    });
   } catch (err: any) {
-    console.error("[MAILER] ERROR", err?.message || err, j(err));
-    return NextResponse.json({ ok: false, error: err?.message || "Send failed" }, { status: 500 });
+    console.error("[MAILER] ERROR:", err);
+    return NextResponse.json(
+      { success: false, error: err?.message || "send failed" },
+      { status: 500 },
+    );
   }
 }
