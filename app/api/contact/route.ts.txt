@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+
+export async function POST(req: Request) {
+  try {
+    const { name, email, service, message } = await req.json();
+
+    // ✅ Setup transporter with Hostinger SMTP
+    const transporter = nodemailer.createTransport({
+      host: "smtp.hostinger.com", // Hostinger SMTP server
+      port: 465,                  // SSL port
+      secure: true,               // true for 465, false for 587
+      auth: {
+        user: process.env.SMTP_USER, // support@xtremedigitonix.com
+        pass: process.env.SMTP_PASS, // your Hostinger email password
+      },
+    });
+
+    // ✅ Email options
+    const mailOptions = {
+      from: `"${name}" <${process.env.SMTP_USER}>`,
+      to: "support@xtremedigitonix.com", // your mailbox
+      subject: `New Contact Form Submission - ${service}`,
+      text: `
+        Name: ${name}
+        Email: ${email}
+        Service: ${service}
+        Message: ${message}
+      `,
+      html: `
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Service:</strong> ${service}</p>
+        <p><strong>Message:</strong> ${message}</p>
+      `,
+    };
+
+    // ✅ Send email
+    await transporter.sendMail(mailOptions);
+
+    return NextResponse.json({ success: true, message: "Email sent successfully!" });
+  } catch (error: any) {
+    console.error("Email sending error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
