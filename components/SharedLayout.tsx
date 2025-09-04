@@ -44,7 +44,6 @@ export function Footer(){
           <ul className="mt-2 space-y-1">
             <li><a href="mailto:support@xtremedigitonix.com">support@xtremedigitonix.com</a></li>
             <li><a href="mailto:sales@xtremedigitonix.com">sales@xtremedigitonix.com</a></li>
-            <li><a href="mailto:mfaizan@xtremedigitonix.com">mfaizan@xtremedigitonix.com</a></li>
           </ul>
         </div>
       </div>
